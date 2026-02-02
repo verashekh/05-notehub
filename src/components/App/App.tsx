@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  keepPreviousData,
-} from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import css from './App.module.css';
 
 import NoteList from '../NoteList/NoteList';
@@ -16,12 +11,9 @@ import ErrorMessage from '../ErrorMessage/ErrorMessage';
 import NoteForm from '../NoteForm/NoteForm';
 import Modal from '../Modal/Modal';
 import type { NoteTag } from '../../types/note';
-import { fetchNotes, deleteNote, createNote } from '../../services/noteService';
-import type { CreateNotePayload } from '../../services/noteService';
+import { fetchNotes } from '../../services/noteService';
 
 export default function App() {
-  const queryClient = useQueryClient();
-
   // modal state ТУТ
   const [isModalOpen, setIsModalOpen] = useState(false);
   // параметри
@@ -48,36 +40,14 @@ export default function App() {
   };
 
   // 1) Завантаження нотаток
-  const { data, isLoading, isError, isFetching } = useQuery({
+  const { data, isLoading, isError, isFetching, error } = useQuery({
     queryKey: ['notes', page, perPage, search, tag, sortBy],
     queryFn: () => fetchNotes({ page, perPage, search, tag, sortBy }),
     placeholderData: keepPreviousData,
   });
 
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      // 1) оновити список
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-      // 2) закрити модалку
-      setIsModalOpen(false);
-    },
-  });
-  const handleCreate = (payload: CreateNotePayload) => {
-    createMutation.mutate(payload);
-  };
-
   const notes = data?.notes ?? [];
   const totalPages = data?.totalPages ?? 0;
-
-  // 2) Видалення нотатки
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-  });
-  const handleDelete = (id: string) => deleteMutation.mutate(id);
 
   return (
     <div className={css.app}>
@@ -99,22 +69,21 @@ export default function App() {
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm
-            onClose={() => setIsModalOpen(false)}
-            onCreate={handleCreate}
-            isSubmitting={createMutation.isPending}
-          />
+          <NoteForm onClose={() => setIsModalOpen(false)} />
         </Modal>
-      )}
-      {createMutation.isError && (
-        <ErrorMessage message="Failed to create note" />
       )}
 
       {isLoading && <Loader />}
       {!isLoading && isFetching && <Loader />}
-      {isError && <ErrorMessage />}
-
-      {notes.length > 0 && <NoteList notes={notes} onDelete={handleDelete} />}
+      {!isLoading && !isError && notes.length === 0 && (
+        <p className={css.empty}>No notes found. Try another search</p>
+      )}
+      {isError && (
+        <ErrorMessage
+          message={(error as Error)?.message ?? 'Failed to load notes'}
+        />
+      )}
+      {notes.length > 0 && <NoteList notes={notes} />}
     </div>
   );
 }

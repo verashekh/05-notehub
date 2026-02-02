@@ -4,7 +4,7 @@ interface SearchBoxProps {
   value: string;
   onChange: (value: string) => void;
 }
-export default function SearchBar({ value, onChange }: SearchBoxProps) {
+export default function SearchBox({ value, onChange }: SearchBoxProps) {
   return (
     <input
       className={css.input}

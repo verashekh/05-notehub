@@ -2,13 +2,13 @@ import { useId } from 'react';
 import { Formik } from 'formik';
 import type { FormikHelpers } from 'formik';
 import * as Yup from 'yup';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import css from './NoteForm.module.css';
+import { createNote } from '../../services/noteService';
 import type { NoteTag } from '../../types/note';
 
 interface NoteFormProps {
   onClose: () => void;
-  onCreate: (payload: { title: string; content: string; tag: NoteTag }) => void;
-  isSubmitting?: boolean;
 }
 
 interface FormValues {
@@ -28,32 +28,39 @@ const schema = Yup.object({
     .min(3, 'Title must be at least 3 characters')
     .max(50, 'Title is too long')
     .required('Title is required'),
-  content: Yup.string()
-    .max(500, 'Content is too long')
-    .required('Content is required'),
+  content: Yup.string().max(500, 'Content is too long'),
   tag: Yup.mixed<NoteTag>()
     .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'])
     .required('Tag is required'),
 });
 
-export default function NoteForm({
-  onClose,
-  onCreate,
-  isSubmitting = false,
-}: NoteFormProps) {
+export default function NoteForm({ onClose }: NoteFormProps) {
   const id = useId();
+  const queryClient = useQueryClient();
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      onClose();
+    },
+  });
 
   const handleSubmit = (
     values: FormValues,
     actions: FormikHelpers<FormValues>
   ) => {
-    onCreate({
-      title: values.title.trim(),
-      content: values.content.trim(),
-      tag: values.tag,
-    });
-
-    actions.resetForm();
+    createMutation.mutate(
+      {
+        title: values.title.trim(),
+        content: values.content.trim(),
+        tag: values.tag,
+      },
+      {
+        onSuccess: () => {
+          actions.resetForm();
+        },
+      }
+    );
   };
 
   return (
@@ -61,8 +68,6 @@ export default function NoteForm({
       initialValues={initialValues}
       validationSchema={schema}
       onSubmit={handleSubmit}
-      validateOnChange={true}
-      validateOnBlur={true}
     >
       {formik => (
         <form className={css.form} onSubmit={formik.handleSubmit}>
@@ -121,18 +126,19 @@ export default function NoteForm({
 
           <div className={css.actions}>
             <button
-              type="submit"
-              className={css.submitButton}
-              disabled={isSubmitting}
-            >
-              Create note
-            </button>
-            <button
               type="button"
               className={css.cancelButton}
               onClick={onClose}
             >
               Cancel
+            </button>
+
+            <button
+              type="submit"
+              className={css.submitButton}
+              disabled={createMutation.isPending}
+            >
+              Create note
             </button>
           </div>
         </form>
