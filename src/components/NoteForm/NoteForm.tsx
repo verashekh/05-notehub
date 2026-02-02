@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Formik } from 'formik';
+import { Formik, ErrorMessage } from 'formik';
 import type { FormikHelpers } from 'formik';
 import * as Yup from 'yup';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -83,7 +83,7 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               onBlur={formik.handleBlur}
             />
             <span className={css.error}>
-              {formik.touched.title ? formik.errors.title : ''}
+              {formik.touched.title && <ErrorMessage name="title" />}
             </span>
           </div>
 
@@ -99,7 +99,7 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               onBlur={formik.handleBlur}
             />
             <span className={css.error}>
-              {formik.touched.content ? formik.errors.content : ''}
+              {formik.touched.content && <ErrorMessage name="content" />}
             </span>
           </div>
 
@@ -120,7 +120,7 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               <option value="Shopping">Shopping</option>
             </select>
             <span className={css.error}>
-              {formik.touched.tag ? (formik.errors.tag as string) : ''}
+              {formik.touched.tag && <ErrorMessage name="tag" />}
             </span>
           </div>
 
